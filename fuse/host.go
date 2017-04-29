@@ -311,7 +311,7 @@ static int _hostGetxattr(char *path, char *name, char *value, size_t size,
 #define _hostGetxattr hostGetxattr
 #endif
 
-static inline struct fuse_operations *hostFsop(void)
+static int hostMain(int argc, char *argv[], void *data)
 {
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -355,15 +355,10 @@ static inline struct fuse_operations *hostFsop(void)
 		//.lock = (int (*)())hostFlock,
 		.utimens = (int (*)())hostUtimens,
 	};
-	return &fsop;
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-}
-
-static inline size_t hostFsopSize(void)
-{
-	return sizeof(struct fuse_operations);
+    return fuse_main_real(argc, argv, &fsop, sizeof fsop, data);
 }
 */
 import "C"
@@ -854,7 +849,7 @@ func (host *FileSystemHost) Mount(args []string) bool {
 	defer func() {
 		host.fuse = nil
 	}()
-	return 0 == C.fuse_main_real(C.int(argc), &argv[0], C.hostFsop(), C.hostFsopSize(), hosthndl)
+	return 0 == C.hostMain(C.int(argc), &argv[0], hosthndl)
 }
 
 // Mount unmounts a file system.
