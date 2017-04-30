@@ -28,6 +28,8 @@ package fuse
 
 #if defined(__APPLE__) || defined(__linux__)
 
+#include <spawn.h>
+#include <sys/mount.h>
 #include <fuse.h>
 
 #elif defined(_WIN32)
@@ -321,7 +323,7 @@ static const char *hostMountpoint(int argc, char *argv[])
     return mountpoint;
 }
 
-static int hostMain(int argc, char *argv[], void *data)
+static int hostMount(int argc, char *argv[], void *data)
 {
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -370,16 +372,37 @@ static int hostMain(int argc, char *argv[], void *data)
 #endif
     return fuse_main_real(argc, argv, &fsop, sizeof fsop, data);
 }
+
+static void hostUnmount(struct fuse *fuse, char *mountpoint)
+{
+#if defined(__APPLE__)
+    unmount(mountpoint, MNT_FORCE);
+#elif defined(__linux__)
+    if (-1 == umount2(mountpoint, MNT_FORCE))
+    {
+        char *argv[] =
+        {
+            "/bin/fusermount",
+            "-u",
+            mountpoint,
+            0,
+        };
+        posix_spawnp(0, argv[0], 0, 0, argv, 0);
+    }
+#elif defined(_WIN32)
+    fuse_exit(fuse);
+#endif
+}
 */
 import "C"
 import "unsafe"
 
 // FileSystemHost is used to host a Cgofuse file system.
 type FileSystemHost struct {
-	fsop       FileSystemInterface
-	hndl       unsafe.Pointer
-	fuse       *C.struct_fuse
-	mountpoint string
+	fsop FileSystemInterface
+	hndl unsafe.Pointer
+	fuse *C.struct_fuse
+	mntp *C.char
 }
 
 func copyCstatvfsFromFusestatfs(dst *C.fuse_statvfs_t, src *Statfs_t) {
@@ -838,7 +861,7 @@ func hostUtimens(path0 *C.char, tmsp0 *C.fuse_timespec_t) (errc0 C.int) {
 
 // NewFileSystemHost creates a file system host.
 func NewFileSystemHost(fsop FileSystemInterface) *FileSystemHost {
-	return &FileSystemHost{fsop, nil, nil, ""}
+	return &FileSystemHost{fsop, nil, nil, nil}
 }
 
 // Mount mounts a file system.
@@ -857,20 +880,19 @@ func (host *FileSystemHost) Mount(args []string) bool {
 	defer delHandleForInterface(host.hndl)
 	hosthndl := newHandleForInterface(host)
 	defer delHandleForInterface(hosthndl)
-	mountpoint := C.hostMountpoint(C.int(argc), &argv[0])
-	defer C.free(unsafe.Pointer(mountpoint))
-	host.mountpoint = C.GoString(mountpoint)
+	host.mntp = C.hostMountpoint(C.int(argc), &argv[0])
 	defer func() {
+		C.free(unsafe.Pointer(host.mntp))
+		host.mntp = nil
 		host.fuse = nil
-		host.mountpoint = ""
 	}()
-	return 0 == C.hostMain(C.int(argc), &argv[0], hosthndl)
+	return 0 == C.hostMount(C.int(argc), &argv[0], hosthndl)
 }
 
-// Mount unmounts a file system.
+// Unmount unmounts a file system.
 func (host *FileSystemHost) Unmount() {
 	if nil != host.fuse {
-		C.fuse_exit(host.fuse)
+		C.hostUnmount(host.fuse, host.mntp)
 	}
 }
 
