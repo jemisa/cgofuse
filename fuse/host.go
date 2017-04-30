@@ -129,14 +129,12 @@ static PVOID cgofuse_init_winfsp(VOID)
 	if (0 > Result)
 		return cgofuse_init_fail();
 
-#if 0
 	// fuse_common.h
 	CGOFUSE_GET_API(h, fsp_fuse_version);
 	CGOFUSE_GET_API(h, fsp_fuse_mount);
 	CGOFUSE_GET_API(h, fsp_fuse_unmount);
 	CGOFUSE_GET_API(h, fsp_fuse_parse_cmdline);
 	CGOFUSE_GET_API(h, fsp_fuse_ntstatus_from_errno);
-#endif
 
 	// fuse.h
 	CGOFUSE_GET_API(h, fsp_fuse_main_real);
@@ -148,7 +146,6 @@ static PVOID cgofuse_init_winfsp(VOID)
 	CGOFUSE_GET_API(h, fsp_fuse_exit);
 	CGOFUSE_GET_API(h, fsp_fuse_get_context);
 
-#if 0
 	// fuse_opt.h
 	CGOFUSE_GET_API(h, fsp_fuse_opt_parse);
 	CGOFUSE_GET_API(h, fsp_fuse_opt_add_arg);
@@ -157,7 +154,6 @@ static PVOID cgofuse_init_winfsp(VOID)
 	CGOFUSE_GET_API(h, fsp_fuse_opt_add_opt);
 	CGOFUSE_GET_API(h, fsp_fuse_opt_add_opt_escaped);
 	CGOFUSE_GET_API(h, fsp_fuse_opt_match);
-#endif
 
 	return Module;
 }
