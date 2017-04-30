@@ -13,7 +13,7 @@
 package fuse
 
 /*
-#cgo darwin CFLAGS: -DFUSE_USE_VERSION=28 -D_FILE_OFFSET_BITS=64 -I/usr/local/include/osxfuse
+#cgo darwin CFLAGS: -DFUSE_USE_VERSION=28 -D_FILE_OFFSET_BITS=64 -I/usr/local/include/osxfuse/fuse
 #cgo darwin LDFLAGS: -L/usr/local/lib -losxfuse
 #cgo linux CFLAGS: -DFUSE_USE_VERSION=28 -D_FILE_OFFSET_BITS=64 -I/usr/include/fuse
 #cgo linux LDFLAGS: -lfuse
@@ -311,6 +311,16 @@ static int _hostGetxattr(char *path, char *name, char *value, size_t size,
 #define _hostGetxattr hostGetxattr
 #endif
 
+static const char *hostMountpoint(int argc, char *argv[])
+{
+    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+    char *mountpoint;
+    if (-1 == fuse_parse_cmdline(&args, &mountpoint, 0, 0))
+        return 0;
+    fuse_opt_free_args(&args);
+    return mountpoint;
+}
+
 static int hostMain(int argc, char *argv[], void *data)
 {
 #if defined(__GNUC__)
@@ -366,9 +376,10 @@ import "unsafe"
 
 // FileSystemHost is used to host a Cgofuse file system.
 type FileSystemHost struct {
-	fsop FileSystemInterface
-	hndl unsafe.Pointer
-	fuse *C.struct_fuse
+	fsop       FileSystemInterface
+	hndl       unsafe.Pointer
+	fuse       *C.struct_fuse
+	mountpoint string
 }
 
 func copyCstatvfsFromFusestatfs(dst *C.fuse_statvfs_t, src *Statfs_t) {
@@ -827,7 +838,7 @@ func hostUtimens(path0 *C.char, tmsp0 *C.fuse_timespec_t) (errc0 C.int) {
 
 // NewFileSystemHost creates a file system host.
 func NewFileSystemHost(fsop FileSystemInterface) *FileSystemHost {
-	return &FileSystemHost{fsop, nil, nil}
+	return &FileSystemHost{fsop, nil, nil, ""}
 }
 
 // Mount mounts a file system.
@@ -846,8 +857,12 @@ func (host *FileSystemHost) Mount(args []string) bool {
 	defer delHandleForInterface(host.hndl)
 	hosthndl := newHandleForInterface(host)
 	defer delHandleForInterface(hosthndl)
+	mountpoint := C.hostMountpoint(C.int(argc), &argv[0])
+	defer C.free(unsafe.Pointer(mountpoint))
+	host.mountpoint = C.GoString(mountpoint)
 	defer func() {
 		host.fuse = nil
+		host.mountpoint = ""
 	}()
 	return 0 == C.hostMain(C.int(argc), &argv[0], hosthndl)
 }
