@@ -315,12 +315,12 @@ static int _hostGetxattr(char *path, char *name, char *value, size_t size,
 
 static const char *hostMountpoint(int argc, char *argv[])
 {
-    struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-    char *mountpoint;
-    if (-1 == fuse_parse_cmdline(&args, &mountpoint, 0, 0))
-        return 0;
-    fuse_opt_free_args(&args);
-    return mountpoint;
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+	char *mountpoint;
+	if (-1 == fuse_parse_cmdline(&args, &mountpoint, 0, 0))
+		return 0;
+	fuse_opt_free_args(&args);
+	return mountpoint;
 }
 
 static int hostMount(int argc, char *argv[], void *data)
@@ -370,27 +370,27 @@ static int hostMount(int argc, char *argv[], void *data)
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-    return fuse_main_real(argc, argv, &fsop, sizeof fsop, data);
+	return fuse_main_real(argc, argv, &fsop, sizeof fsop, data);
 }
 
 static void hostUnmount(struct fuse *fuse, char *mountpoint)
 {
 #if defined(__APPLE__)
-    unmount(mountpoint, MNT_FORCE);
+	unmount(mountpoint, MNT_FORCE);
 #elif defined(__linux__)
-    if (-1 == umount2(mountpoint, MNT_FORCE))
-    {
-        char *argv[] =
-        {
-            "/bin/fusermount",
-            "-u",
-            mountpoint,
-            0,
-        };
-        posix_spawnp(0, argv[0], 0, 0, argv, 0);
-    }
+	if (-1 == umount2(mountpoint, MNT_FORCE))
+	{
+		char *argv[] =
+		{
+			"/bin/fusermount",
+			"-u",
+			mountpoint,
+			0,
+		};
+		posix_spawnp(0, argv[0], 0, 0, argv, 0);
+	}
 #elif defined(_WIN32)
-    fuse_exit(fuse);
+	fuse_exit(fuse);
 #endif
 }
 */
